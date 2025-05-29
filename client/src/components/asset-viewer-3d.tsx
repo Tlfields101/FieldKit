@@ -155,19 +155,18 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
           });
           
         } else if (asset.filetype === '.blend') {
-          const importer = new BlendImporter();
-          model = await importer.loadAsync('/models/SamuraiSword_Mediumtsuba_v2_02.blend');
-          
-          model.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              child.material = new THREE.MeshLambertMaterial({ 
-                color: 0xff6600,
-                side: THREE.DoubleSide 
-              });
-              child.castShadow = true;
-              child.receiveShadow = true;
-            }
+          // Blender files need conversion - show a distinctive placeholder
+          const geometry = new THREE.BoxGeometry(1, 1, 1);
+          const material = new THREE.MeshLambertMaterial({ 
+            color: 0xff6600,
+            wireframe: true 
           });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.castShadow = true;
+          model = new THREE.Group();
+          model.add(mesh);
+          
+          console.log('Blender file detected - direct .blend parsing is complex in browsers');
           
         } else {
           const geometry = new THREE.SphereGeometry(0.7, 16, 16);
