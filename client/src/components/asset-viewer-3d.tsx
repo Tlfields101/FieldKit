@@ -133,6 +133,7 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
           model.position.sub(center.multiplyScalar(scale));
           
           scene.add(model);
+          currentModel = model; // Set reference for animation
           setIsLoading(false);
         }
         
@@ -146,7 +147,10 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
         const material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
         const mesh = new THREE.Mesh(geometry, material);
         mesh.castShadow = true;
-        scene.add(mesh);
+        const fallbackModel = new THREE.Group();
+        fallbackModel.add(mesh);
+        scene.add(fallbackModel);
+        currentModel = fallbackModel;
       }
     };
 
