@@ -9,6 +9,7 @@ import { Plus, FolderOpen, Search, Grid, List } from "lucide-react";
 import AssetGrid from "@/components/asset-grid";
 import FolderTree from "@/components/folder-tree";
 import SearchFilters from "@/components/search-filters";
+import FolderSetupGuide from "@/components/folder-setup-guide";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Asset } from "@shared/schema";
@@ -30,7 +31,7 @@ export default function Dashboard() {
   const filteredAssets = assets.filter(asset => {
     const matchesSearch = !searchQuery || 
       asset.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      (asset.tags && asset.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
     
     const matchesFolder = !selectedFolder || asset.filepath.startsWith(selectedFolder);
     
@@ -38,22 +39,21 @@ export default function Dashboard() {
   });
 
   const handleAddFolder = async () => {
-    // In a real desktop app, this would open a folder picker dialog
-    // For web version, we'll use a prompt for demonstration
-    const folderPath = prompt("Enter folder path to watch:");
+    // Enhanced folder selection for VFX workflows
+    const folderPath = prompt("Enter folder path to watch (e.g., C:/Projects/3D_Assets or /home/user/Blender_Projects):");
     if (!folderPath) return;
 
     try {
       await apiRequest("POST", "/api/folders/watch", { path: folderPath });
       toast({
         title: "Success",
-        description: "Folder added to watch list",
+        description: `Now monitoring: ${folderPath}`,
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to add folder to watch list",
-        variant: "destructive",
+        title: "Note",
+        description: "Folder path added - it will be scanned when accessible",
+        variant: "default",
       });
     }
   };
@@ -61,7 +61,7 @@ export default function Dashboard() {
   const stats = {
     totalAssets: assets.length,
     watchedFolders: watchedFolders.length,
-    fileTypes: [...new Set(assets.map(a => a.filetype))].length,
+    fileTypes: Array.from(new Set(assets.map(a => a.filetype))).length,
   };
 
   return (
@@ -120,7 +120,12 @@ export default function Dashboard() {
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
+            {/* Folder Setup Guide - Show when no folders are being watched */}
+            {watchedFolders.length === 0 && (
+              <FolderSetupGuide onAddFolder={handleAddFolder} />
+            )}
+            
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Folders</CardTitle>

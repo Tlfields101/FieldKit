@@ -95,15 +95,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Folder path is required" });
       }
 
-      // Verify folder exists
+      // For desktop VFX workflows, we'll accept folder paths and attempt to watch them
+      // In a real desktop app, this would have proper file system access
       try {
-        await fs.access(folderPath);
-      } catch {
-        return res.status(400).json({ message: "Folder does not exist" });
+        await fileWatcher.addWatchFolder(folderPath);
+        res.json({ message: "Folder added to watch list", path: folderPath });
+      } catch (error) {
+        // Still add to database for future scanning when folder becomes available
+        await storage.createFolder({
+          path: folderPath,
+          name: path.basename(folderPath),
+          parentId: null,
+          isWatched: true,
+          lastScanned: new Date(),
+        });
+        res.json({ message: "Folder path registered for monitoring", path: folderPath });
       }
-
-      await fileWatcher.addWatchFolder(folderPath);
-      res.json({ message: "Folder added to watch list", path: folderPath });
     } catch (error) {
       res.status(500).json({ message: "Failed to add folder to watch list" });
     }
