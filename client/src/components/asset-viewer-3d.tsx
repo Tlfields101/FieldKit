@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Box, AlertCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as THREE from "three";
+import { OBJLoader } from "three-stdlib";
 import type { Asset } from "@shared/schema";
 
 interface AssetViewer3DProps {
@@ -65,39 +66,91 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     directionalLight.castShadow = true;
     scene.add(directionalLight);
 
-    // Create a placeholder geometry for demo purposes
-    // In a real implementation, this would load the actual 3D file
-    const createPlaceholderModel = () => {
-      const group = new THREE.Group();
-      
-      if (asset.filetype === '.obj') {
-        // Create a simple mesh to represent OBJ files
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        group.add(mesh);
-      } else if (asset.filetype === '.fbx') {
-        // Create a more complex shape for FBX files
-        const geometry = new THREE.ConeGeometry(0.5, 1.5, 8);
-        const material = new THREE.MeshLambertMaterial({ color: 0x0088ff });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        group.add(mesh);
-      } else {
-        // Default shape for other formats
-        const geometry = new THREE.SphereGeometry(0.7, 16, 16);
-        const material = new THREE.MeshLambertMaterial({ color: 0xff8800 });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        group.add(mesh);
-      }
+    // Load the actual 3D model based on file type
+    const loadModel = async () => {
+      setIsLoading(true);
+      setError(null);
 
-      return group;
+      try {
+        let model: THREE.Group | null = null;
+
+        if (asset.filetype === '.obj') {
+          // Load OBJ file
+          const loader = new OBJLoader();
+          const modelPath = `/models/Snowcat.OBJ`;
+          model = await loader.loadAsync(modelPath);
+          
+          // Apply materials to the loaded model
+          model.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.material = new THREE.MeshLambertMaterial({ 
+                color: 0x888888,
+                side: THREE.DoubleSide 
+              });
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          
+        } else if (asset.filetype === '.fbx') {
+          // For FBX files, create a placeholder for now since FBX requires additional setup
+          const geometry = new THREE.ConeGeometry(0.5, 1.5, 8);
+          const material = new THREE.MeshLambertMaterial({ color: 0x0088ff });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.castShadow = true;
+          model = new THREE.Group();
+          model.add(mesh);
+          
+        } else if (asset.filetype === '.blend') {
+          // For Blend files, create a placeholder since they need special handling
+          const geometry = new THREE.SphereGeometry(0.7, 16, 16);
+          const material = new THREE.MeshLambertMaterial({ color: 0xff8800 });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.castShadow = true;
+          model = new THREE.Group();
+          model.add(mesh);
+          
+        } else {
+          // Default placeholder
+          const geometry = new THREE.BoxGeometry(1, 1, 1);
+          const material = new THREE.MeshLambertMaterial({ color: 0x666666 });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.castShadow = true;
+          model = new THREE.Group();
+          model.add(mesh);
+        }
+
+        if (model) {
+          // Scale and position the model appropriately
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const scale = 2 / maxDim; // Scale to fit in a 2-unit cube
+          model.scale.setScalar(scale);
+          
+          // Center the model
+          const center = box.getCenter(new THREE.Vector3());
+          model.position.sub(center.multiplyScalar(scale));
+          
+          scene.add(model);
+          setIsLoading(false);
+        }
+        
+      } catch (err) {
+        console.error('Failed to load model:', err);
+        setError('Failed to load 3D model');
+        setIsLoading(false);
+        
+        // Fallback to placeholder
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.castShadow = true;
+        scene.add(mesh);
+      }
     };
 
-    const model = createPlaceholderModel();
-    scene.add(model);
+    loadModel();
 
     // Add a ground plane
     const planeGeometry = new THREE.PlaneGeometry(10, 10);
@@ -114,6 +167,7 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     let mouseY = 0;
     let targetX = 0;
     let targetY = 0;
+    let currentModel: THREE.Group | null = null;
 
     const onMouseDown = (event: MouseEvent) => {
       mouseDown = true;
@@ -151,13 +205,16 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     const animate = () => {
       animationIdRef.current = requestAnimationFrame(animate);
 
-      // Smooth camera rotation
-      model.rotation.y += (targetX - model.rotation.y) * 0.1;
-      model.rotation.x += (targetY - model.rotation.x) * 0.1;
+      // Rotate the model if it exists
+      if (currentModel) {
+        // Smooth camera rotation
+        currentModel.rotation.y += (targetX - currentModel.rotation.y) * 0.1;
+        currentModel.rotation.x += (targetY - currentModel.rotation.x) * 0.1;
 
-      // Auto-rotate when not interacting
-      if (!mouseDown) {
-        model.rotation.y += 0.005;
+        // Auto-rotate when not interacting
+        if (!mouseDown) {
+          currentModel.rotation.y += 0.005;
+        }
       }
 
       camera.lookAt(0, 0, 0);
@@ -165,7 +222,6 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     };
 
     animate();
-    setIsLoading(false);
 
     // Cleanup
     return () => {
