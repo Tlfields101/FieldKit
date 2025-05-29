@@ -154,6 +154,21 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
             }
           });
           
+        } else if (asset.filetype === '.blend') {
+          // Blender files need conversion - show a distinctive placeholder
+          const geometry = new THREE.BoxGeometry(1, 1, 1);
+          const material = new THREE.MeshLambertMaterial({ 
+            color: 0xff6600,
+            wireframe: true 
+          });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.castShadow = true;
+          model = new THREE.Group();
+          model.add(mesh);
+          
+          // Add a text indicator
+          console.log('Blender file detected - would need conversion to GLTF/FBX for viewing');
+          
         } else {
           const geometry = new THREE.SphereGeometry(0.7, 16, 16);
           const material = new THREE.MeshLambertMaterial({ color: 0xff8800 });
