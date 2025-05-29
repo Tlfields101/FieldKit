@@ -126,7 +126,7 @@ export default function AssetViewer() {
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">File Type</label>
                   <div className="mt-1">
-                    <Badge variant="secondary">{asset.filetype.toUpperCase()}</Badge>
+                    <Badge variant="secondary">{asset.filetype?.toUpperCase() || 'Unknown'}</Badge>
                   </div>
                 </div>
                 
