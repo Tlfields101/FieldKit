@@ -34,7 +34,7 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     
   }, [asset]);
 
-  const is3DViewable = ['.obj', '.fbx', '.gltf', '.glb'].includes(asset.filetype);
+  const is3DViewable = asset.filetype && ['.obj', '.fbx', '.gltf', '.glb'].includes(asset.filetype);
 
   return (
     <div className="relative w-full h-[500px] bg-muted rounded-lg overflow-hidden">
@@ -51,7 +51,7 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
               <p className="text-muted-foreground mb-4">
                 Interactive 3D preview for {asset.filename}
               </p>
-              <Badge variant="secondary">{asset.filetype.toUpperCase()}</Badge>
+              <Badge variant="secondary">{asset.filetype?.toUpperCase() || 'Unknown'}</Badge>
               <div className="mt-4 text-xs text-muted-foreground">
                 Coming soon: Full 3D rendering with Three.js
               </div>
@@ -71,9 +71,9 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
             <AlertCircle className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-medium text-foreground mb-2">Preview Not Available</h3>
             <p className="text-muted-foreground mb-4">
-              3D preview is not supported for {asset.filetype} files
+              3D preview is not supported for {asset.filetype || 'unknown'} files
             </p>
-            <Badge variant="outline">{asset.filetype.toUpperCase()}</Badge>
+            <Badge variant="outline">{asset.filetype?.toUpperCase() || 'Unknown'}</Badge>
           </div>
         </div>
       )}
