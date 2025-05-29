@@ -17,7 +17,8 @@ const FILE_TYPES = [
   { value: '.blend', label: 'Blender' },
   { value: '.ma', label: 'Maya' },
   { value: '.hip', label: 'Houdini' },
-  { value: '.uasset', label: 'Unreal' },
+  { value: '.uasset', label: 'Unreal Asset' },
+  { value: '.umap', label: 'Unreal Level' },
 ];
 
 const FILE_SIZES = [

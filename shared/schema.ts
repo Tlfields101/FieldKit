@@ -45,10 +45,10 @@ export type UpdateAsset = z.infer<typeof updateAssetSchema>;
 export type Folder = typeof folders.$inferSelect;
 export type InsertFolder = z.infer<typeof insertFolderSchema>;
 
-// Supported 3D file types
+// Supported 3D file types - Enhanced for VFX workflows including Unreal
 export const SUPPORTED_3D_FORMATS = [
   '.obj', '.fbx', '.gltf', '.glb', '.usd', '.usda', '.usdc',
-  '.blend', '.ma', '.mb', '.hip', '.hiplc', '.uasset'
+  '.blend', '.ma', '.mb', '.hip', '.hiplc', '.uasset', '.umap'
 ] as const;
 
 export type SupportedFormat = typeof SUPPORTED_3D_FORMATS[number];

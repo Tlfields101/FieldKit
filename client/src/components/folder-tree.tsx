@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, ChevronDown, Folder, FolderOpen } from "lucide-react";
+import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
@@ -95,7 +95,7 @@ export default function FolderTree({ selectedFolder, onFolderSelect }: FolderTre
           {isSelected ? (
             <FolderOpen className="h-4 w-4 text-primary" />
           ) : (
-            <Folder className={`h-4 w-4 ${isWatched ? 'text-primary' : 'text-muted-foreground'}`} />
+            <FolderIcon className={`h-4 w-4 ${isWatched ? 'text-primary' : 'text-muted-foreground'}`} />
           )}
           
           <span className={`text-sm truncate ${isSelected ? 'font-medium' : ''}`}>
@@ -105,7 +105,7 @@ export default function FolderTree({ selectedFolder, onFolderSelect }: FolderTre
         
         {isExpanded && hasChildren && (
           <div>
-            {folder.children.map(child => renderFolder(child, level + 1))}
+            {folder.children.map(child => renderFolder(child as any, level + 1))}
           </div>
         )}
       </div>
@@ -128,12 +128,12 @@ export default function FolderTree({ selectedFolder, onFolderSelect }: FolderTre
         
         {watchedFolders.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <FolderIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No folders being watched</p>
             <p className="text-xs">Add folders to start monitoring</p>
           </div>
         ) : (
-          tree.map(folder => renderFolder(folder))
+          tree.map(folder => renderFolder(folder as any))
         )}
       </div>
     </ScrollArea>

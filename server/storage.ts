@@ -60,7 +60,7 @@ export class MemStorage implements IStorage {
     const lowerQuery = query.toLowerCase();
     return Array.from(this.assets.values()).filter(asset => 
       asset.filename.toLowerCase().includes(lowerQuery) ||
-      asset.tags.some(tag => tag.toLowerCase().includes(lowerQuery)) ||
+      (asset.tags && asset.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
       (asset.metadata && asset.metadata.toLowerCase().includes(lowerQuery))
     );
   }
@@ -68,8 +68,15 @@ export class MemStorage implements IStorage {
   async createAsset(insertAsset: InsertAsset): Promise<Asset> {
     const id = this.currentAssetId++;
     const asset: Asset = {
-      ...insertAsset,
       id,
+      filename: insertAsset.filename,
+      filepath: insertAsset.filepath,
+      filesize: insertAsset.filesize,
+      filetype: insertAsset.filetype,
+      thumbnailPath: insertAsset.thumbnailPath || null,
+      tags: insertAsset.tags || [],
+      metadata: insertAsset.metadata || null,
+      lastModified: insertAsset.lastModified,
       createdAt: new Date(),
     };
     this.assets.set(id, asset);
@@ -115,8 +122,12 @@ export class MemStorage implements IStorage {
   async createFolder(insertFolder: InsertFolder): Promise<Folder> {
     const id = this.currentFolderId++;
     const folder: Folder = {
-      ...insertFolder,
       id,
+      path: insertFolder.path,
+      name: insertFolder.name,
+      parentId: insertFolder.parentId || null,
+      isWatched: insertFolder.isWatched ?? true,
+      lastScanned: insertFolder.lastScanned || null,
     };
     this.folders.set(id, folder);
     return folder;
