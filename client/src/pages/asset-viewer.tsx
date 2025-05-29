@@ -16,7 +16,7 @@ export default function AssetViewer() {
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
 
   const { data: asset, isLoading } = useQuery<Asset>({
-    queryKey: ["/api/assets", id],
+    queryKey: [`/api/assets/${id}`],
     enabled: !!id,
   });
 
