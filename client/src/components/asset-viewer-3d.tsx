@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Box, AlertCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as THREE from "three";
-import { OBJLoader } from "three-stdlib";
+import { OBJLoader, FBXLoader } from "three-stdlib";
 import type { Asset } from "@shared/schema";
 
 interface AssetViewer3DProps {
@@ -27,7 +27,9 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     
     // Clear previous scene
     if (rendererRef.current) {
-      container.removeChild(rendererRef.current.domElement);
+      if (container.contains(rendererRef.current.domElement)) {
+        container.removeChild(rendererRef.current.domElement);
+      }
       rendererRef.current.dispose();
     }
     if (animationIdRef.current) {
@@ -138,12 +140,19 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
           });
           
         } else if (asset.filetype === '.fbx') {
-          const geometry = new THREE.ConeGeometry(0.5, 1.5, 8);
-          const material = new THREE.MeshLambertMaterial({ color: 0x0088ff });
-          const mesh = new THREE.Mesh(geometry, material);
-          mesh.castShadow = true;
-          model = new THREE.Group();
-          model.add(mesh);
+          const loader = new FBXLoader();
+          model = await loader.loadAsync('/models/FruitPears001.fbx');
+          
+          model.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.material = new THREE.MeshLambertMaterial({ 
+                color: 0x88ff88,
+                side: THREE.DoubleSide 
+              });
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
           
         } else {
           const geometry = new THREE.SphereGeometry(0.7, 16, 16);
