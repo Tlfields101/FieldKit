@@ -112,16 +112,7 @@ export default function AssetCard({ asset, viewMode }: AssetCardProps) {
           )}
         </div>
 
-        {/* Actions overlay */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-          <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); handleView(); }}>
-            <Eye className="h-4 w-4 mr-1" />
-            View
-          </Button>
-          <Button variant="secondary" size="sm" onClick={(e) => e.stopPropagation()}>
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-        </div>
+
       </CardContent>
     </Card>
   );
