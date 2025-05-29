@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Box, AlertCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,6 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const animationIdRef = useRef<number | null>(null);
-  const modelRef = useRef<THREE.Group | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +66,111 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     directionalLight.castShadow = true;
     scene.add(directionalLight);
 
+    // Simple orbit controls (manual implementation)
+    let mouseDown = false;
+    let mouseX = 0;
+    let mouseY = 0;
+    let targetX = 0;
+    let targetY = 0;
+    let currentModel: THREE.Group | null = null;
+
+    // Load the actual 3D model based on file type
+    const loadModel = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        let model: THREE.Group | null = null;
+
+        if (asset.filetype === '.obj') {
+          // Load OBJ file
+          const loader = new OBJLoader();
+          const modelPath = `/models/Snowcat.OBJ`;
+          
+          try {
+            model = await loader.loadAsync(modelPath);
+            
+            // Apply materials to the loaded model
+            model.traverse((child) => {
+              if (child instanceof THREE.Mesh) {
+                child.material = new THREE.MeshLambertMaterial({ 
+                  color: 0x888888,
+                  side: THREE.DoubleSide 
+                });
+                child.castShadow = true;
+                child.receiveShadow = true;
+              }
+            });
+          } catch (loadError) {
+            console.error('OBJ loading error:', loadError);
+            throw new Error(`OBJ loading failed: ${loadError instanceof Error ? loadError.message : 'Unknown OBJ error'}`);
+          }
+          
+        } else if (asset.filetype === '.fbx') {
+          // For FBX files, create a placeholder for now since FBX requires additional setup
+          const geometry = new THREE.ConeGeometry(0.5, 1.5, 8);
+          const material = new THREE.MeshLambertMaterial({ color: 0x0088ff });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.castShadow = true;
+          model = new THREE.Group();
+          model.add(mesh);
+          
+        } else if (asset.filetype === '.blend') {
+          // For Blend files, create a placeholder since they need special handling
+          const geometry = new THREE.SphereGeometry(0.7, 16, 16);
+          const material = new THREE.MeshLambertMaterial({ color: 0xff8800 });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.castShadow = true;
+          model = new THREE.Group();
+          model.add(mesh);
+          
+        } else {
+          // Default placeholder
+          const geometry = new THREE.BoxGeometry(1, 1, 1);
+          const material = new THREE.MeshLambertMaterial({ color: 0x666666 });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.castShadow = true;
+          model = new THREE.Group();
+          model.add(mesh);
+        }
+
+        if (model) {
+          // Scale and position the model appropriately
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const scale = 2 / maxDim; // Scale to fit in a 2-unit cube
+          model.scale.setScalar(scale);
+          
+          // Center the model
+          const center = box.getCenter(new THREE.Vector3());
+          model.position.sub(center.multiplyScalar(scale));
+          
+          scene.add(model);
+          currentModel = model; // Set reference for animation
+          setIsLoading(false);
+        }
+        
+      } catch (err) {
+        console.error('Failed to load model:', err);
+        console.error('Error details:', err instanceof Error ? err.message : 'Unknown error');
+        setError(`Failed to load 3D model: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        setIsLoading(false);
+        
+        // Fallback to placeholder
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.castShadow = true;
+        const fallbackModel = new THREE.Group();
+        fallbackModel.add(mesh);
+        scene.add(fallbackModel);
+        currentModel = fallbackModel;
+      }
+    };
+
+    loadModel();
+
     // Add a ground plane
     const planeGeometry = new THREE.PlaneGeometry(10, 10);
     const planeMaterial = new THREE.MeshLambertMaterial({ color: 0xcccccc });
@@ -74,13 +179,6 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     plane.position.y = -1;
     plane.receiveShadow = true;
     scene.add(plane);
-
-    // Controls
-    let mouseDown = false;
-    let mouseX = 0;
-    let mouseY = 0;
-    let targetX = 0;
-    let targetY = 0;
 
     const onMouseDown = (event: MouseEvent) => {
       mouseDown = true;
@@ -114,89 +212,19 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     container.addEventListener('mousemove', onMouseMove);
     container.addEventListener('wheel', onWheel);
 
-    // Load model
-    const loadModel = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        let model: THREE.Group | null = null;
-
-        if (asset.filetype === '.obj') {
-          const loader = new OBJLoader();
-          model = await loader.loadAsync('/models/Snowcat.OBJ');
-          
-          model.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              child.material = new THREE.MeshLambertMaterial({ 
-                color: 0x888888,
-                side: THREE.DoubleSide 
-              });
-              child.castShadow = true;
-              child.receiveShadow = true;
-            }
-          });
-          
-        } else if (asset.filetype === '.fbx') {
-          const geometry = new THREE.ConeGeometry(0.5, 1.5, 8);
-          const material = new THREE.MeshLambertMaterial({ color: 0x0088ff });
-          const mesh = new THREE.Mesh(geometry, material);
-          mesh.castShadow = true;
-          model = new THREE.Group();
-          model.add(mesh);
-          
-        } else {
-          const geometry = new THREE.SphereGeometry(0.7, 16, 16);
-          const material = new THREE.MeshLambertMaterial({ color: 0xff8800 });
-          const mesh = new THREE.Mesh(geometry, material);
-          mesh.castShadow = true;
-          model = new THREE.Group();
-          model.add(mesh);
-        }
-
-        if (model) {
-          // Scale and center the model
-          const box = new THREE.Box3().setFromObject(model);
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const scale = 2 / maxDim;
-          model.scale.setScalar(scale);
-          
-          const center = box.getCenter(new THREE.Vector3());
-          model.position.sub(center.multiplyScalar(scale));
-          
-          scene.add(model);
-          modelRef.current = model;
-          setIsLoading(false);
-        }
-        
-      } catch (err) {
-        console.error('Failed to load model:', err);
-        setError('Failed to load 3D model');
-        setIsLoading(false);
-        
-        // Fallback placeholder
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        const fallbackModel = new THREE.Group();
-        fallbackModel.add(mesh);
-        scene.add(fallbackModel);
-        modelRef.current = fallbackModel;
-      }
-    };
-
     // Animation loop
     const animate = () => {
       animationIdRef.current = requestAnimationFrame(animate);
 
-      if (modelRef.current) {
-        modelRef.current.rotation.y += (targetX - modelRef.current.rotation.y) * 0.1;
-        modelRef.current.rotation.x += (targetY - modelRef.current.rotation.x) * 0.1;
+      // Rotate the model if it exists
+      if (currentModel) {
+        // Smooth camera rotation
+        currentModel.rotation.y += (targetX - currentModel.rotation.y) * 0.1;
+        currentModel.rotation.x += (targetY - currentModel.rotation.x) * 0.1;
 
+        // Auto-rotate when not interacting
         if (!mouseDown) {
-          modelRef.current.rotation.y += 0.005;
+          currentModel.rotation.y += 0.005;
         }
       }
 
@@ -204,7 +232,7 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
       renderer.render(scene, camera);
     };
 
-    loadModel().then(() => animate());
+    animate();
 
     // Cleanup
     return () => {
@@ -235,8 +263,10 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     <div className="relative w-full h-[500px] bg-muted rounded-lg overflow-hidden">
       {is3DViewable ? (
         <>
+          {/* 3D Canvas Container */}
           <div ref={containerRef} className="w-full h-full" />
           
+          {/* Loading overlay */}
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
               <div className="text-center">
@@ -246,10 +276,12 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
             </div>
           )}
           
+          {/* File type indicator */}
           <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg px-3 py-1">
             <Badge variant="secondary">{asset.filetype?.toUpperCase() || 'Unknown'}</Badge>
           </div>
           
+          {/* Controls overlay */}
           <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-sm rounded-lg p-3">
             <div className="flex items-center gap-2 mb-2">
               <Button variant="outline" size="sm" onClick={handleReset}>
@@ -262,6 +294,7 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
             </div>
           </div>
 
+          {/* Info overlay */}
           <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg px-3 py-2">
             <p className="text-sm font-medium">{asset.filename}</p>
             <p className="text-xs text-muted-foreground">Interactive 3D Preview</p>
