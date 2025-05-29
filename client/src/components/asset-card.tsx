@@ -96,7 +96,7 @@ export default function AssetCard({ asset, viewMode }: AssetCardProps) {
             <Badge variant="secondary" className="text-xs">{asset.filetype}</Badge>
             <span className="text-xs text-muted-foreground">{formatFileSize(asset.filesize)}</span>
           </div>
-          {asset.tags.length > 0 && (
+          {asset.tags && asset.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {asset.tags.slice(0, 2).map((tag, index) => (
                 <Badge key={index} variant="outline" className="text-xs">

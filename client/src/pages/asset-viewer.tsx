@@ -155,7 +155,7 @@ export default function AssetViewer() {
                 <CardTitle>Tags</CardTitle>
               </CardHeader>
               <CardContent>
-                {asset.tags.length > 0 ? (
+                {asset.tags && asset.tags.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {asset.tags.map((tag, index) => (
                       <Badge key={index} variant="outline">{tag}</Badge>
