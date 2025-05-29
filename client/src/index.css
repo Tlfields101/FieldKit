@@ -1,0 +1,212 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 20 14.3% 4.1%;
+  --muted: 60 4.8% 95.9%;
+  --muted-foreground: 25 5.3% 44.7%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 14.3% 4.1%;
+  --card: 0 0% 100%;
+  --card-foreground: 20 14.3% 4.1%;
+  --border: 20 5.9% 90%;
+  --input: 20 5.9% 90%;
+  --primary: 262 83% 58%; /* Purple for 3D/Creative theme */
+  --primary-foreground: 210 40% 98%;
+  --secondary: 60 4.8% 95.9%;
+  --secondary-foreground: 24 9.8% 10%;
+  --accent: 262 83% 58%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 60 9.1% 97.8%;
+  --ring: 262 83% 58%;
+  --radius: 0.5rem;
+  
+  /* Custom colors for 3D asset manager */
+  --asset-grid-bg: 250 50% 98%;
+  --thumbnail-bg: 220 14% 96%;
+  --folder-hover: 262 83% 95%;
+}
+
+.dark {
+  --background: 224 71% 4%; /* Dark blue-gray */
+  --foreground: 213 31% 91%;
+  --muted: 223 47% 11%;
+  --muted-foreground: 215.4 16.3% 56.9%;
+  --popover: 224 71% 4%;
+  --popover-foreground: 215 20.2% 65.1%;
+  --card: 224 71% 4%;
+  --card-foreground: 213 31% 91%;
+  --border: 216 34% 17%;
+  --input: 216 34% 17%;
+  --primary: 263 70% 50%; /* Adjusted purple for dark mode */
+  --primary-foreground: 210 20% 98%;
+  --secondary: 222.2 84% 4.9%;
+  --secondary-foreground: 210 40% 98%;
+  --accent: 216 34% 17%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --ring: 263 70% 50%;
+  
+  /* Dark mode custom colors */
+  --asset-grid-bg: 224 71% 6%;
+  --thumbnail-bg: 216 34% 12%;
+  --folder-hover: 263 70% 15%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Custom scrollbar for 3D asset browser */
+  .asset-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .asset-scroll::-webkit-scrollbar-track {
+    @apply bg-muted/30;
+  }
+  
+  .asset-scroll::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+  
+  .asset-scroll::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+}
+
+@layer components {
+  /* Asset card hover effects */
+  .asset-card {
+    @apply transition-all duration-200 ease-in-out;
+  }
+  
+  .asset-card:hover {
+    @apply scale-105 shadow-lg;
+  }
+  
+  /* Folder tree styling */
+  .folder-tree-item {
+    @apply transition-colors duration-150;
+  }
+  
+  .folder-tree-item:hover {
+    background-color: hsl(var(--folder-hover));
+  }
+  
+  /* 3D viewer container */
+  .viewer-3d {
+    @apply bg-gradient-to-br from-muted/50 to-background;
+  }
+  
+  /* Thumbnail placeholder */
+  .thumbnail-placeholder {
+    @apply bg-gradient-to-br from-muted to-muted/70 flex items-center justify-center text-muted-foreground;
+  }
+  
+  /* Loading animation for 3D assets */
+  .loading-cube {
+    animation: cube-rotate 2s infinite linear;
+  }
+  
+  @keyframes cube-rotate {
+    0% { transform: rotateX(0deg) rotateY(0deg); }
+    50% { transform: rotateX(180deg) rotateY(180deg); }
+    100% { transform: rotateX(360deg) rotateY(360deg); }
+  }
+}
+
+@layer utilities {
+  /* Grid layouts for different asset view modes */
+  .asset-grid-compact {
+    @apply grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2;
+  }
+  
+  .asset-grid-normal {
+    @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4;
+  }
+  
+  .asset-grid-large {
+    @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6;
+  }
+  
+  /* File type specific colors */
+  .filetype-obj { @apply text-blue-500; }
+  .filetype-fbx { @apply text-green-500; }
+  .filetype-gltf { @apply text-purple-500; }
+  .filetype-blend { @apply text-orange-500; }
+  .filetype-ma { @apply text-cyan-500; }
+  .filetype-hip { @apply text-red-500; }
+  .filetype-uasset { @apply text-indigo-500; }
+  
+  /* Status indicators */
+  .status-watching { @apply text-green-500; }
+  .status-scanning { @apply text-yellow-500; }
+  .status-error { @apply text-red-500; }
+  
+  /* Performance indicators */
+  .complexity-low { @apply text-green-600; }
+  .complexity-medium { @apply text-yellow-600; }
+  .complexity-high { @apply text-red-600; }
+}
+
+/* Custom animations for asset loading */
+@keyframes asset-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.asset-loading {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted-foreground) / 0.1) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: asset-shimmer 1.5s infinite;
+}
+
+/* Focus styles for accessibility */
+.asset-focusable:focus-visible {
+  @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border: 0 0% 20%;
+    --muted: 0 0% 85%;
+  }
+  
+  .dark {
+    --border: 0 0% 80%;
+    --muted: 0 0% 15%;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .asset-card {
+    @apply transition-none;
+  }
+  
+  .loading-cube {
+    animation: none;
+  }
+  
+  .asset-loading {
+    animation: none;
+  }
+}
