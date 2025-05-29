@@ -156,6 +156,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Serve model files
+  app.get("/models/:filename", async (req, res) => {
+    try {
+      const filename = req.params.filename;
+      const modelsPath = path.resolve(process.cwd(), "client", "public", "models", filename);
+      
+      // Check if file exists and serve it
+      await fs.access(modelsPath);
+      res.sendFile(modelsPath);
+    } catch (error) {
+      res.status(404).json({ message: "Model file not found" });
+    }
+  });
+
   // File system operations
   app.post("/api/files/open-folder", async (req, res) => {
     try {
