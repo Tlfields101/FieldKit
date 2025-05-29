@@ -185,6 +185,12 @@ export default function Dashboard() {
                   <TabsContent value="all" className="mt-4">
                     <SearchFilters />
                     <div className="mt-4">
+                      {selectedFolder && (
+                        <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                          <p className="text-sm font-medium">Viewing assets from:</p>
+                          <p className="text-xs text-muted-foreground">{selectedFolder}</p>
+                        </div>
+                      )}
                       <AssetGrid 
                         assets={filteredAssets} 
                         viewMode={viewMode}

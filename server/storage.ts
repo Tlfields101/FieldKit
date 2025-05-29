@@ -33,6 +33,69 @@ export class MemStorage implements IStorage {
     this.folders = new Map();
     this.currentAssetId = 1;
     this.currentFolderId = 1;
+    
+    // Add some demo assets to show how the system works
+    this.initializeDemoData();
+  }
+
+  private initializeDemoData() {
+    // Demo assets for different project types
+    const demoAssets = [
+      {
+        filename: "character_model.fbx",
+        filepath: "P:/Projects/character_model.fbx",
+        filesize: 15680000,
+        filetype: ".fbx",
+        tags: ["character", "rigged", "animation"],
+        metadata: JSON.stringify({ 
+          software: "Maya", 
+          polyCount: 12500, 
+          hasAnimations: true,
+          project: "Game Character"
+        })
+      },
+      {
+        filename: "environment_building.blend",
+        filepath: "P:/Projects/environment_building.blend",
+        filesize: 8950000,
+        filetype: ".blend",
+        tags: ["environment", "architecture", "lowpoly"],
+        metadata: JSON.stringify({ 
+          software: "Blender", 
+          polyCount: 5600, 
+          materials: 8,
+          project: "Environment Pack"
+        })
+      },
+      {
+        filename: "vehicle_car.obj",
+        filepath: "P:/Projects/vehicle_car.obj",
+        filesize: 4250000,
+        filetype: ".obj",
+        tags: ["vehicle", "transport", "textured"],
+        metadata: JSON.stringify({ 
+          polyCount: 8900, 
+          hasTextures: true,
+          project: "Vehicle Collection"
+        })
+      }
+    ];
+
+    demoAssets.forEach(asset => {
+      const id = this.currentAssetId++;
+      this.assets.set(id, {
+        id,
+        filename: asset.filename,
+        filepath: asset.filepath,
+        filesize: asset.filesize,
+        filetype: asset.filetype,
+        thumbnailPath: null,
+        tags: asset.tags,
+        metadata: asset.metadata,
+        lastModified: new Date(),
+        createdAt: new Date(),
+      });
+    });
   }
 
   // Asset operations

@@ -66,7 +66,7 @@ export default function FolderTree({ selectedFolder, onFolderSelect }: FolderTre
     return (
       <div key={folder.path}>
         <div 
-          className={`flex items-center gap-1 py-1 px-2 hover:bg-muted/50 cursor-pointer ${
+          className={`flex items-center gap-1 py-1 px-2 hover:bg-muted/50 cursor-pointer min-w-0 ${
             isSelected ? 'bg-muted' : ''
           }`}
           style={{ paddingLeft: `${level * 12 + 8}px` }}
@@ -98,7 +98,7 @@ export default function FolderTree({ selectedFolder, onFolderSelect }: FolderTre
             <FolderIcon className={`h-4 w-4 ${isWatched ? 'text-primary' : 'text-muted-foreground'}`} />
           )}
           
-          <span className={`text-sm truncate ${isSelected ? 'font-medium' : ''}`}>
+          <span className={`text-sm truncate flex-1 ${isSelected ? 'font-medium' : ''}`} title={folder.name}>
             {folder.name}
           </span>
         </div>
