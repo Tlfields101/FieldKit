@@ -6,6 +6,9 @@ import * as THREE from "three";
 import { OBJLoader, FBXLoader } from "three-stdlib";
 import type { Asset } from "@shared/schema";
 
+// Global cache that persists across component mounts
+const globalModelCache = new Map<string, THREE.Group>();
+
 interface AssetViewer3DProps {
   asset: Asset;
 }
@@ -20,8 +23,7 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Simple cache for loaded models
-  const modelCache = useRef<Map<string, THREE.Group>>(new Map());
+
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -133,8 +135,8 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
         const cacheKey = `${asset.filetype}_${asset.filename}`;
         
         // Check cache first
-        if (modelCache.current.has(cacheKey)) {
-          const cachedModel = modelCache.current.get(cacheKey);
+        if (globalModelCache.has(cacheKey)) {
+          const cachedModel = globalModelCache.get(cacheKey);
           if (cachedModel) {
             console.log('Loading from cache:', cacheKey);
             const clonedModel = cachedModel.clone();
@@ -227,10 +229,10 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
           // Cache the processed model (only if successful and has geometry)
           if (model && model.children.length > 0) {
             console.log('Caching model:', cacheKey);
-            modelCache.current.set(cacheKey, model.clone());
+            globalModelCache.set(cacheKey, model.clone());
           } else {
             // Clear any corrupted cache entry
-            modelCache.current.delete(cacheKey);
+            globalModelCache.delete(cacheKey);
           }
           
           scene.add(model);
