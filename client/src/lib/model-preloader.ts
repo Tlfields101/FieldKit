@@ -1,9 +1,13 @@
 import * as THREE from "three";
 import { OBJLoader, FBXLoader } from "three-stdlib";
 
-// Global model cache
-const globalModelCache = new Map<string, THREE.Group>();
+// Global model cache with memory management
+const globalModelCache = new Map<string, { model: THREE.Group; lastUsed: number; size: number }>();
 const loadingPromises = new Map<string, Promise<THREE.Group>>();
+
+// Memory management settings
+const MAX_CACHE_SIZE_MB = 100; // Limit cache to 100MB
+const MAX_CACHED_MODELS = 20;  // Keep max 20 models cached
 
 export class ModelPreloader {
   private static instance: ModelPreloader;
@@ -18,9 +22,11 @@ export class ModelPreloader {
   async preloadModel(filename: string, filetype: string): Promise<THREE.Group> {
     const cacheKey = `${filetype}_${filename}`;
     
-    // Return cached model if available
+    // Return cached model if available and update last used time
     if (globalModelCache.has(cacheKey)) {
-      return globalModelCache.get(cacheKey)!.clone();
+      const cached = globalModelCache.get(cacheKey)!;
+      cached.lastUsed = Date.now();
+      return cached.model.clone();
     }
 
     // Return existing loading promise if in progress
@@ -35,7 +41,16 @@ export class ModelPreloader {
 
     try {
       const model = await loadPromise;
-      globalModelCache.set(cacheKey, model);
+      const modelSize = this.estimateModelSize(model);
+      
+      // Clean cache if needed before adding new model
+      this.cleanCache(modelSize);
+      
+      globalModelCache.set(cacheKey, {
+        model,
+        lastUsed: Date.now(),
+        size: modelSize
+      });
       loadingPromises.delete(cacheKey);
       return model.clone();
     } catch (error) {
@@ -124,7 +139,76 @@ export class ModelPreloader {
   getFromCache(filename: string, filetype: string): THREE.Group | null {
     const cacheKey = `${filetype}_${filename}`;
     const cached = globalModelCache.get(cacheKey);
-    return cached ? cached.clone() : null;
+    if (cached) {
+      cached.lastUsed = Date.now();
+      return cached.model.clone();
+    }
+    return null;
+  }
+
+  private estimateModelSize(model: THREE.Group): number {
+    let totalSize = 0;
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.geometry) {
+        const geometry = child.geometry;
+        const vertices = geometry.attributes.position?.count || 0;
+        const faces = geometry.index ? geometry.index.count / 3 : vertices / 3;
+        // Rough estimate: 32 bytes per vertex + 12 bytes per face
+        totalSize += (vertices * 32) + (faces * 12);
+      }
+    });
+    return totalSize / (1024 * 1024); // Convert to MB
+  }
+
+  private cleanCache(newModelSize: number) {
+    // Check if we need to clean cache
+    const currentSize = this.getCurrentCacheSize();
+    const modelCount = globalModelCache.size;
+
+    if (currentSize + newModelSize > MAX_CACHE_SIZE_MB || modelCount >= MAX_CACHED_MODELS) {
+      // Sort by last used time (oldest first)
+      const entries = Array.from(globalModelCache.entries())
+        .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+
+      // Remove oldest entries until we have space
+      while (entries.length > 0 && 
+             (this.getCurrentCacheSize() + newModelSize > MAX_CACHE_SIZE_MB || 
+              globalModelCache.size >= MAX_CACHED_MODELS)) {
+        const [key, cached] = entries.shift()!;
+        
+        // Dispose geometry to free GPU memory
+        cached.model.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry?.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach(mat => mat.dispose());
+            } else {
+              child.material?.dispose();
+            }
+          }
+        });
+        
+        globalModelCache.delete(key);
+        console.log(`Removed cached model ${key} to free memory`);
+      }
+    }
+  }
+
+  private getCurrentCacheSize(): number {
+    let totalSize = 0;
+    globalModelCache.forEach(cached => {
+      totalSize += cached.size;
+    });
+    return totalSize;
+  }
+
+  getCacheInfo() {
+    return {
+      modelCount: globalModelCache.size,
+      totalSizeMB: this.getCurrentCacheSize(),
+      maxSizeMB: MAX_CACHE_SIZE_MB,
+      maxModels: MAX_CACHED_MODELS
+    };
   }
 
   preloadAll() {
