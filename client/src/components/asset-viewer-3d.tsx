@@ -136,6 +136,7 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
         if (modelCache.current.has(cacheKey)) {
           const cachedModel = modelCache.current.get(cacheKey);
           if (cachedModel) {
+            console.log('Loading from cache:', cacheKey);
             const clonedModel = cachedModel.clone();
             scene.add(clonedModel);
             modelRef.current = clonedModel;
@@ -143,6 +144,8 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
             return;
           }
         }
+        
+        console.log('Loading fresh model for:', cacheKey);
 
         let model: THREE.Group | null = null;
 
