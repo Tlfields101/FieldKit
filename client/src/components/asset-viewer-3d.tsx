@@ -215,7 +215,7 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
         }
         
       } catch (err) {
-        console.error('Failed to load model:', err);
+        console.error('Failed to load model:', err, 'For asset:', asset);
         setError('Failed to load 3D model');
         setIsLoading(false);
         
