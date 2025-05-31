@@ -134,11 +134,14 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
         
         // Check cache first
         if (modelCache.current.has(cacheKey)) {
-          const cachedModel = modelCache.current.get(cacheKey)!.clone();
-          scene.add(cachedModel);
-          modelRef.current = cachedModel;
-          setIsLoading(false);
-          return;
+          const cachedModel = modelCache.current.get(cacheKey);
+          if (cachedModel) {
+            const clonedModel = cachedModel.clone();
+            scene.add(clonedModel);
+            modelRef.current = clonedModel;
+            setIsLoading(false);
+            return;
+          }
         }
 
         let model: THREE.Group | null = null;
@@ -206,8 +209,10 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
           const center = box.getCenter(new THREE.Vector3());
           model.position.sub(center.multiplyScalar(scale));
           
-          // Cache the processed model
-          modelCache.current.set(cacheKey, model.clone());
+          // Cache the processed model (only if successful)
+          if (model && model.children.length > 0) {
+            modelCache.current.set(cacheKey, model.clone());
+          }
           
           scene.add(model);
           modelRef.current = model;
