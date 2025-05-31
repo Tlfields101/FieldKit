@@ -148,15 +148,19 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
 
         if (asset.filetype === '.obj') {
           const loader = new OBJLoader();
-          try {
-            model = await loader.loadAsync('/models/Snowcat.OBJ');
-            console.log('OBJ loaded successfully, children count:', model?.children?.length);
-          } catch (loadError) {
-            console.error('OBJ loading failed:', loadError);
-            // Retry once
-            console.log('Retrying OBJ load...');
-            model = await loader.loadAsync('/models/Snowcat.OBJ');
-          }
+          
+          // Add timeout wrapper for large files
+          const loadWithTimeout = (url: string, timeout: number = 30000) => {
+            return Promise.race([
+              loader.loadAsync(url),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Load timeout')), timeout)
+              )
+            ]);
+          };
+          
+          model = await loadWithTimeout('/models/Snowcat.OBJ') as THREE.Group;
+          console.log('OBJ loaded successfully, children count:', model?.children?.length);
           
           model.traverse((child) => {
             if (child instanceof THREE.Mesh) {
@@ -217,9 +221,13 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
           const center = box.getCenter(new THREE.Vector3());
           model.position.sub(center.multiplyScalar(scale));
           
-          // Cache the processed model (only if successful)
+          // Cache the processed model (only if successful and has geometry)
           if (model && model.children.length > 0) {
+            console.log('Caching model:', cacheKey);
             modelCache.current.set(cacheKey, model.clone());
+          } else {
+            // Clear any corrupted cache entry
+            modelCache.current.delete(cacheKey);
           }
           
           scene.add(model);
