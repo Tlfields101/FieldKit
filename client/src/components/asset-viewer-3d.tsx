@@ -148,7 +148,15 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
 
         if (asset.filetype === '.obj') {
           const loader = new OBJLoader();
-          model = await loader.loadAsync('/models/Snowcat.OBJ');
+          try {
+            model = await loader.loadAsync('/models/Snowcat.OBJ');
+            console.log('OBJ loaded successfully, children count:', model?.children?.length);
+          } catch (loadError) {
+            console.error('OBJ loading failed:', loadError);
+            // Retry once
+            console.log('Retrying OBJ load...');
+            model = await loader.loadAsync('/models/Snowcat.OBJ');
+          }
           
           model.traverse((child) => {
             if (child instanceof THREE.Mesh) {
