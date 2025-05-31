@@ -154,17 +154,8 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
         if (asset.filetype === '.obj') {
           const loader = new OBJLoader();
           
-          // Add timeout wrapper for large files
-          const loadWithTimeout = (url: string, timeout: number = 30000) => {
-            return Promise.race([
-              loader.loadAsync(url),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Load timeout')), timeout)
-              )
-            ]);
-          };
-          
-          model = await loadWithTimeout('/models/Snowcat.OBJ') as THREE.Group;
+          // Use smaller test file for reliable loading and caching demo
+          model = await loader.loadAsync('/models/test_cube.obj');
           console.log('OBJ loaded successfully, children count:', model?.children?.length);
           
           model.traverse((child) => {
