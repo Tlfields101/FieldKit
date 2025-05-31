@@ -19,6 +19,9 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
   const modelRef = useRef<THREE.Group | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Cache for loaded models
+  const modelCache = useRef<Map<string, THREE.Group>>(new Map());
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -51,11 +54,16 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     camera.position.set(2, 2, 5);
     cameraRef.current = camera;
 
-    // Set up renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    // Set up renderer with performance optimizations
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      powerPreference: "high-performance"
+    });
     renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -122,6 +130,17 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
       setError(null);
 
       try {
+        const cacheKey = `${asset.filetype}_${asset.filename}`;
+        
+        // Check cache first
+        if (modelCache.current.has(cacheKey)) {
+          const cachedModel = modelCache.current.get(cacheKey)!.clone();
+          scene.add(cachedModel);
+          modelRef.current = cachedModel;
+          setIsLoading(false);
+          return;
+        }
+
         let model: THREE.Group | null = null;
 
         if (asset.filetype === '.obj') {
@@ -130,12 +149,19 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
           
           model.traverse((child) => {
             if (child instanceof THREE.Mesh) {
+              // Optimize geometry for faster rendering
+              if (child.geometry) {
+                child.geometry.computeBoundingSphere();
+                child.geometry.computeBoundingBox();
+              }
+              
               child.material = new THREE.MeshLambertMaterial({ 
                 color: 0x888888,
                 side: THREE.DoubleSide 
               });
               child.castShadow = true;
               child.receiveShadow = true;
+              child.frustumCulled = true; // Enable frustum culling
             }
           });
           
@@ -145,12 +171,19 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
           
           model.traverse((child) => {
             if (child instanceof THREE.Mesh) {
+              // Optimize geometry for faster rendering
+              if (child.geometry) {
+                child.geometry.computeBoundingSphere();
+                child.geometry.computeBoundingBox();
+              }
+              
               child.material = new THREE.MeshLambertMaterial({ 
                 color: 0x88ff88,
                 side: THREE.DoubleSide 
               });
               child.castShadow = true;
               child.receiveShadow = true;
+              child.frustumCulled = true; // Enable frustum culling
             }
           });
           
@@ -188,6 +221,9 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
           const center = box.getCenter(new THREE.Vector3());
           model.position.sub(center.multiplyScalar(scale));
           
+          // Cache the processed model
+          modelCache.current.set(cacheKey, model.clone());
+          
           scene.add(model);
           modelRef.current = model;
           setIsLoading(false);
@@ -210,9 +246,14 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
       }
     };
 
-    // Animation loop
-    const animate = () => {
+    // Animation loop with performance optimization
+    let lastTime = 0;
+    const animate = (currentTime: number) => {
       animationIdRef.current = requestAnimationFrame(animate);
+
+      // Limit to 60fps max
+      if (currentTime - lastTime < 16.67) return;
+      lastTime = currentTime;
 
       if (modelRef.current) {
         modelRef.current.rotation.y += (targetX - modelRef.current.rotation.y) * 0.1;
