@@ -3,11 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Box, AlertCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as THREE from "three";
-import { OBJLoader, FBXLoader } from "three-stdlib";
 import type { Asset } from "@shared/schema";
-
-// Global cache that persists across component mounts
-const globalModelCache = new Map<string, THREE.Group>();
+import { ModelPreloader } from "@/lib/model-preloader";
 
 interface AssetViewer3DProps {
   asset: Asset;
@@ -23,7 +20,12 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-
+  const preloader = useMemo(() => {
+    const instance = ModelPreloader.getInstance();
+    // Start preloading common models immediately
+    instance.preloadAll();
+    return instance;
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -126,113 +128,33 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     container.addEventListener('mousemove', onMouseMove);
     container.addEventListener('wheel', onWheel);
 
-    // Load model with simple caching
+    // Load model using preloader for much faster loading
     const loadModel = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const cacheKey = `${asset.filetype}_${asset.filename}`;
+        // Try to get from cache first for instant loading
+        const cachedModel = preloader.getFromCache(asset.filename, asset.filetype || '.obj');
         
-        // Check cache first
-        if (globalModelCache.has(cacheKey)) {
-          const cachedModel = globalModelCache.get(cacheKey);
-          if (cachedModel) {
-            console.log('Loading from cache:', cacheKey);
-            const clonedModel = cachedModel.clone();
-            scene.add(clonedModel);
-            modelRef.current = clonedModel;
-            setIsLoading(false);
-            return;
-          }
-        }
-        
-        console.log('Loading fresh model for:', cacheKey);
-
-        let model: THREE.Group | null = null;
-
-        if (asset.filetype === '.obj') {
-          const loader = new OBJLoader();
-          
-          // Use smaller test file for reliable loading and caching demo
-          model = await loader.loadAsync('/models/test_cube.obj');
-          console.log('OBJ loaded successfully, children count:', model?.children?.length);
-          
-          model.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              child.material = new THREE.MeshLambertMaterial({ 
-                color: 0x888888,
-                side: THREE.DoubleSide 
-              });
-              child.castShadow = true;
-              child.receiveShadow = true;
-              child.frustumCulled = true;
-            }
-          });
-          
-        } else if (asset.filetype === '.fbx') {
-          const loader = new FBXLoader();
-          model = await loader.loadAsync('/models/FruitPears001.fbx');
-          
-          model.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              child.material = new THREE.MeshLambertMaterial({ 
-                color: 0x88ff88,
-                side: THREE.DoubleSide 
-              });
-              child.castShadow = true;
-              child.receiveShadow = true;
-              child.frustumCulled = true;
-            }
-          });
-          
-        } else if (asset.filetype === '.blend') {
-          const geometry = new THREE.BoxGeometry(1, 1, 1);
-          const material = new THREE.MeshLambertMaterial({ 
-            color: 0xff6600,
-            wireframe: true 
-          });
-          const mesh = new THREE.Mesh(geometry, material);
-          mesh.castShadow = true;
-          model = new THREE.Group();
-          model.add(mesh);
-          
-        } else {
-          const geometry = new THREE.SphereGeometry(0.7, 16, 16);
-          const material = new THREE.MeshLambertMaterial({ color: 0xff8800 });
-          const mesh = new THREE.Mesh(geometry, material);
-          mesh.castShadow = true;
-          model = new THREE.Group();
-          model.add(mesh);
+        if (cachedModel) {
+          scene.add(cachedModel);
+          modelRef.current = cachedModel;
+          setIsLoading(false);
+          return;
         }
 
+        // Load with preloader (handles caching internally)
+        const model = await preloader.preloadModel(asset.filename, asset.filetype || '.obj');
+        
         if (model) {
-          // Scale and center the model
-          const box = new THREE.Box3().setFromObject(model);
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const scale = 2 / maxDim;
-          model.scale.setScalar(scale);
-          
-          const center = box.getCenter(new THREE.Vector3());
-          model.position.sub(center.multiplyScalar(scale));
-          
-          // Cache the processed model (only if successful and has geometry)
-          if (model && model.children.length > 0) {
-            console.log('Caching model:', cacheKey);
-            globalModelCache.set(cacheKey, model.clone());
-          } else {
-            // Clear any corrupted cache entry
-            globalModelCache.delete(cacheKey);
-          }
-          
           scene.add(model);
           modelRef.current = model;
           setIsLoading(false);
         }
         
       } catch (err) {
-        console.error('Failed to load model:', err, 'For asset:', asset);
+        console.error('Failed to load model:', err);
         setError('Failed to load 3D model');
         setIsLoading(false);
         
