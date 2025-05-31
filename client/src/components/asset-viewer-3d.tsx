@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Box, AlertCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as THREE from "three";
-import { OBJLoader, FBXLoader } from "three-stdlib";
 import type { Asset } from "@shared/schema";
+import { ModelPreloader } from "@/lib/model-preloader";
 
 interface AssetViewer3DProps {
   asset: Asset;
@@ -20,8 +20,12 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Cache for loaded models
-  const modelCache = useRef<Map<string, THREE.Group>>(new Map());
+  const preloader = useMemo(() => {
+    const instance = ModelPreloader.getInstance();
+    // Start preloading common models immediately
+    instance.preloadAll();
+    return instance;
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -124,106 +128,26 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
     container.addEventListener('mousemove', onMouseMove);
     container.addEventListener('wheel', onWheel);
 
-    // Load model
+    // Load model using preloader for much faster loading
     const loadModel = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const cacheKey = `${asset.filetype}_${asset.filename}`;
+        // Try to get from cache first for instant loading
+        const cachedModel = preloader.getFromCache(asset.filename, asset.filetype || '.obj');
         
-        // Check cache first
-        if (modelCache.current.has(cacheKey)) {
-          const cachedModel = modelCache.current.get(cacheKey)!.clone();
+        if (cachedModel) {
           scene.add(cachedModel);
           modelRef.current = cachedModel;
           setIsLoading(false);
           return;
         }
 
-        let model: THREE.Group | null = null;
-
-        if (asset.filetype === '.obj') {
-          const loader = new OBJLoader();
-          model = await loader.loadAsync('/models/Snowcat.OBJ');
-          
-          model.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              // Optimize geometry for faster rendering
-              if (child.geometry) {
-                child.geometry.computeBoundingSphere();
-                child.geometry.computeBoundingBox();
-              }
-              
-              child.material = new THREE.MeshLambertMaterial({ 
-                color: 0x888888,
-                side: THREE.DoubleSide 
-              });
-              child.castShadow = true;
-              child.receiveShadow = true;
-              child.frustumCulled = true; // Enable frustum culling
-            }
-          });
-          
-        } else if (asset.filetype === '.fbx') {
-          const loader = new FBXLoader();
-          model = await loader.loadAsync('/models/FruitPears001.fbx');
-          
-          model.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              // Optimize geometry for faster rendering
-              if (child.geometry) {
-                child.geometry.computeBoundingSphere();
-                child.geometry.computeBoundingBox();
-              }
-              
-              child.material = new THREE.MeshLambertMaterial({ 
-                color: 0x88ff88,
-                side: THREE.DoubleSide 
-              });
-              child.castShadow = true;
-              child.receiveShadow = true;
-              child.frustumCulled = true; // Enable frustum culling
-            }
-          });
-          
-        } else if (asset.filetype === '.blend') {
-          // Blender files need conversion - show a distinctive placeholder
-          const geometry = new THREE.BoxGeometry(1, 1, 1);
-          const material = new THREE.MeshLambertMaterial({ 
-            color: 0xff6600,
-            wireframe: true 
-          });
-          const mesh = new THREE.Mesh(geometry, material);
-          mesh.castShadow = true;
-          model = new THREE.Group();
-          model.add(mesh);
-          
-          console.log('Blender file detected - direct .blend parsing is complex in browsers');
-          
-        } else {
-          const geometry = new THREE.SphereGeometry(0.7, 16, 16);
-          const material = new THREE.MeshLambertMaterial({ color: 0xff8800 });
-          const mesh = new THREE.Mesh(geometry, material);
-          mesh.castShadow = true;
-          model = new THREE.Group();
-          model.add(mesh);
-        }
-
+        // Load with preloader (handles caching internally)
+        const model = await preloader.preloadModel(asset.filename, asset.filetype || '.obj');
+        
         if (model) {
-          // Scale and center the model
-          const box = new THREE.Box3().setFromObject(model);
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const scale = 2 / maxDim;
-          model.scale.setScalar(scale);
-          
-          const center = box.getCenter(new THREE.Vector3());
-          model.position.sub(center.multiplyScalar(scale));
-          
-          // Cache the processed model
-          modelCache.current.set(cacheKey, model.clone());
-          
           scene.add(model);
           modelRef.current = model;
           setIsLoading(false);
@@ -268,7 +192,7 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
       renderer.render(scene, camera);
     };
 
-    loadModel().then(() => animate());
+    loadModel().then(() => animate(0));
 
     // Cleanup
     return () => {
