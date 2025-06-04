@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [scannedAssets, setScannedAssets] = useState<Asset[]>([]);
   const { toast } = useToast();
 
   const { data: assets = [], isLoading: assetsLoading } = useQuery<Asset[]>({
@@ -40,20 +41,37 @@ export default function Dashboard() {
 
   const handleAddFolder = async () => {
     // Enhanced folder selection for VFX workflows
-    const folderPath = prompt("Enter folder path to watch (e.g., C:/Projects/3D_Assets or /home/user/Blender_Projects):");
+    const folderPath = prompt("Enter folder path to scan (e.g., C:/Projects/3D_Assets):");
     if (!folderPath) return;
 
     try {
-      await apiRequest("POST", "/api/folders/watch", { path: folderPath });
+      //Register the folder with the backend
+      await apiRequest("POST", "/api/folders/watch", {path: folderPath});
+
+      // Immediatley scan it and get asssets from it
+      const res = await fetch ("/api/assets-from-path", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({folder: folderPath}),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to scan folder");
+      }
+
+      const data = await res.json();
+      setScannedAssets(data.assets);
+
       toast({
         title: "Success",
-        description: `Now monitoring: ${folderPath}`,
+        description: `Now monitoring: ${folderPath} — Found ${data.assets.length} assets`,
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
-        title: "Note",
-        description: "Folder path added - it will be scanned when accessible",
-        variant: "default",
+        title: "Error",
+        description: error.message || "Could not add or scan folder",
+        variant: "destructive",
       });
     }
   };
@@ -191,19 +209,22 @@ export default function Dashboard() {
                           <p className="text-xs text-muted-foreground">{selectedFolder}</p>
                         </div>
                       )}
-                      <AssetGrid 
-                        assets={filteredAssets} 
+                      <AssetGrid
+                        assets={filteredAssets}
                         viewMode={viewMode}
                         isLoading={assetsLoading}
                       />
+                      {scannedAssets.length > 0 && (
+                          <div className="mt-8">
+                            <p className="text-sm font-semibold mb-2">Scanned Assets:</p>
+                            <AssetGrid
+                              assets={filteredAssets.slice(0, 10)}
+                              viewMode={viewMode}
+                              isLoading={assetsLoading}
+                            />
+                          </div>
+                        )}
                     </div>
-                  </TabsContent>
-                  <TabsContent value="recent" className="mt-4">
-                    <AssetGrid 
-                      assets={filteredAssets.slice(0, 10)} 
-                      viewMode={viewMode}
-                      isLoading={assetsLoading}
-                    />
                   </TabsContent>
                   <TabsContent value="favorites" className="mt-4">
                     <div className="text-center text-muted-foreground py-8">
