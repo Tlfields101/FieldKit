@@ -1,0 +1,15 @@
+# 3D file formats
+*.blend
+*.fbx
+*.obj
+*.glb
+*.gltf
+*.abc
+*.usd
+*.usda
+*.usdc
+*.ply
+*.stl
+
+#Folders
+/attached_assets/
