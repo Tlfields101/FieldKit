@@ -10,8 +10,8 @@ import AssetGrid from "@/components/asset-grid";
 import FolderTree from "@/components/folder-tree";
 import SearchFilters from "@/components/search-filters";
 import FolderSetupGuide from "@/components/folder-setup-guide";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAddWatchFolder } from "@/hooks/use-assets";
 import type { Asset } from "@shared/schema";
 
 export default function Dashboard() {
@@ -38,13 +38,16 @@ export default function Dashboard() {
     return matchesSearch && matchesFolder;
   });
 
+  const addFolder = useAddWatchFolder();
+
   const handleAddFolder = async () => {
-    // Enhanced folder selection for VFX workflows
-    const folderPath = prompt("Enter folder path to watch (e.g., C:/Projects/3D_Assets or /home/user/Blender_Projects):");
+    const folderPath = prompt(
+      "Enter folder path to watch (e.g., C:/Projects/3D_Assets or /home/user/Blender_Projects):"
+    );
     if (!folderPath) return;
 
     try {
-      await apiRequest("POST", "/api/folders/watch", { path: folderPath });
+      await addFolder.mutateAsync(folderPath);
       toast({
         title: "Success",
         description: `Now monitoring: ${folderPath}`,
