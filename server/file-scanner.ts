@@ -86,6 +86,7 @@ export class FileScanner {
       filepath: filePath,
       filesize: stats.size,
       filetype: ext,
+      lastModified: stats.mtime,
       tags,
       metadata: JSON.stringify(metadata)
     };
