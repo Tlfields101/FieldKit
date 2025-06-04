@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { fileWatcher } from "./file-watcher";
+import { fileScanner } from "./file-scanner";
 import { insertAssetSchema, updateAssetSchema, insertFolderSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs/promises";
