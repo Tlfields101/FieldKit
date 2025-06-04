@@ -12,4 +12,4 @@
 *.stl
 
 #Folders
-/attached_assets/
+/attached_assets/*
