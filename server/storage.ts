@@ -39,11 +39,56 @@ export class MemStorage implements IStorage {
   }
 
   private initializeDemoData() {
+    // Demo folders
+    const demoFolders = [
+      {
+        path: "P:/Projects",
+        name: "Projects",
+        parentId: null,
+        isWatched: true,
+        lastScanned: new Date(),
+      },
+      {
+        path: "P:/Projects/Characters",
+        name: "Characters",
+        parentId: null,
+        isWatched: true,
+        lastScanned: new Date(),
+      },
+      {
+        path: "P:/Projects/Environments",
+        name: "Environments",
+        parentId: null,
+        isWatched: true,
+        lastScanned: new Date(),
+      },
+      {
+        path: "P:/Projects/Vehicles",
+        name: "Vehicles",
+        parentId: null,
+        isWatched: true,
+        lastScanned: new Date(),
+      }
+    ];
+
+    // Add demo folders
+    demoFolders.forEach(folder => {
+      const id = this.currentFolderId++;
+      this.folders.set(id, {
+        id,
+        path: folder.path,
+        name: folder.name,
+        parentId: folder.parentId,
+        isWatched: folder.isWatched,
+        lastScanned: folder.lastScanned,
+      });
+    });
+
     // Demo assets for different project types
     const demoAssets = [
       {
         filename: "character_model.fbx",
-        filepath: "P:/Projects/character_model.fbx",
+        filepath: "P:/Projects/Characters/character_model.fbx",
         filesize: 15680000,
         filetype: ".fbx",
         tags: ["character", "rigged", "animation"],
@@ -56,7 +101,7 @@ export class MemStorage implements IStorage {
       },
       {
         filename: "environment_building.blend",
-        filepath: "P:/Projects/environment_building.blend",
+        filepath: "P:/Projects/Environments/environment_building.blend",
         filesize: 8950000,
         filetype: ".blend",
         tags: ["environment", "architecture", "lowpoly"],
@@ -69,7 +114,7 @@ export class MemStorage implements IStorage {
       },
       {
         filename: "vehicle_car.obj",
-        filepath: "P:/Projects/vehicle_car.obj",
+        filepath: "P:/Projects/Vehicles/vehicle_car.obj",
         filesize: 4250000,
         filetype: ".obj",
         tags: ["vehicle", "transport", "textured"],
@@ -81,6 +126,7 @@ export class MemStorage implements IStorage {
       }
     ];
 
+    // Add demo assets
     demoAssets.forEach(asset => {
       const id = this.currentAssetId++;
       this.assets.set(id, {
