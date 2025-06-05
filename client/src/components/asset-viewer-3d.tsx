@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import * as THREE from "three";
 import type { Asset } from "@shared/schema";
 import { ModelPreloader } from "@/lib/model-preloader";
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
+import { LOADER_MAP } from '@/lib/three-utils';
 
 interface AssetViewer3DProps {
   asset: Asset;
@@ -134,28 +138,78 @@ export default function AssetViewer3D({ asset }: AssetViewer3DProps) {
       setError(null);
 
       try {
-        // Try to get from cache first for instant loading
-        const cachedModel = preloader.getFromCache(asset.filename, asset.filetype || '.obj');
-        
-        if (cachedModel) {
-          scene.add(cachedModel);
-          modelRef.current = cachedModel;
-          setIsLoading(false);
-          return;
+        // Load model from the streaming endpoint
+        const response = await fetch(`/api/assets/${asset.id}/stream`);
+        if (!response.ok) {
+          throw new Error('Failed to load model');
         }
 
-        // Load with preloader (handles caching internally)
-        const model = await preloader.preloadModel(asset.filename, asset.filetype || '.obj');
-        
-        if (model) {
-          scene.add(model);
-          modelRef.current = model;
-          setIsLoading(false);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        let model: THREE.Group | null = null;
+
+        // Use appropriate loader based on file type
+        if (asset.filetype === '.obj') {
+          const loader = new OBJLoader();
+          model = await loader.loadAsync(url);
+          
+          // Apply materials to OBJ models
+          model.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.material = new THREE.MeshLambertMaterial({ 
+                color: 0x888888,
+                side: THREE.DoubleSide 
+              });
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+        } else if (asset.filetype === '.fbx') {
+          const loader = new FBXLoader();
+          model = await loader.loadAsync(url);
+          
+          // Apply materials to FBX models
+          model.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.material = new THREE.MeshLambertMaterial({ 
+                color: 0x88ff88,
+                side: THREE.DoubleSide 
+              });
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+        } else if (asset.filetype === '.gltf' || asset.filetype === '.glb') {
+          const loader = new GLTFLoader();
+          const gltf = await loader.loadAsync(url);
+          model = gltf.scene;
+        } else {
+          throw new Error(`Unsupported file type: ${asset.filetype}`);
         }
+
+        if (!model) {
+          throw new Error('Failed to load model: Model is null');
+        }
+
+        // Scale and center the model
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = 2 / maxDim; // Scale to fit in a 2-unit cube
+        model.scale.setScalar(scale);
         
+        // Center the model
+        const center = box.getCenter(new THREE.Vector3());
+        model.position.sub(center.multiplyScalar(scale));
+        
+        scene.add(model);
+        modelRef.current = model;
+        
+        setIsLoading(false);
       } catch (err) {
         console.error('Failed to load model:', err);
-        setError('Failed to load 3D model');
+        setError(`Failed to load 3D model: ${err instanceof Error ? err.message : 'Unknown error'}`);
         setIsLoading(false);
         
         // Fallback placeholder

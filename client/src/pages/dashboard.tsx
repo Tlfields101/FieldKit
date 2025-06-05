@@ -18,10 +18,9 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [scannedAssets, setScannedAssets] = useState<Asset[]>([]);
   const { toast } = useToast();
 
-  const { data: assets = [], isLoading: assetsLoading } = useQuery<Asset[]>({
+  const { data: assets = [], isLoading: assetsLoading, refetch: refetchAssets } = useQuery<Asset[]>({
     queryKey: ["/api/assets"],
   });
 
@@ -51,6 +50,8 @@ export default function Dashboard() {
         title: "Success",
         description: `Now monitoring: ${folderPath}`,
       });
+      // Refetch assets to update the UI with new assets
+      refetchAssets();
     } catch (error) {
       toast({
         title: "Note",

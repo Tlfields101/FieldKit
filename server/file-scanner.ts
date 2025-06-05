@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
-import type { InsertAsset } from '@shared/schema';
+import type { InsertAsset, InsertFolder } from '@shared/schema';
+import { storage } from './storage';
 
 const readdir = promisify(fs.readdir);
 const stat = promisify(fs.stat);
@@ -13,6 +14,18 @@ export class FileScanner {
     const assets: InsertAsset[] = [];
     
     try {
+      // First create the root folder entry
+      const rootFolder = await storage.getFolderByPath(folderPath);
+      if (!rootFolder) {
+        await storage.createFolder({
+          path: folderPath,
+          name: path.basename(folderPath),
+          parentId: null,
+          isWatched: true,
+          lastScanned: new Date(),
+        });
+      }
+
       await this.scanRecursive(folderPath, assets);
     } catch (error) {
       console.error('Error scanning folder:', error);
@@ -37,6 +50,19 @@ export class FileScanner {
           if (stats.isDirectory()) {
             // Skip hidden directories and common ignore patterns
             if (!item.startsWith('.') && !this.shouldIgnoreDirectory(item)) {
+              // Create folder entry in database
+              const existingFolder = await storage.getFolderByPath(fullPath);
+              if (!existingFolder) {
+                const parentFolder = await storage.getFolderByPath(currentPath);
+                await storage.createFolder({
+                  path: fullPath,
+                  name: item,
+                  parentId: parentFolder?.id || null,
+                  isWatched: false,
+                  lastScanned: new Date(),
+                });
+              }
+              
               await this.scanRecursive(fullPath, assets, depth + 1);
             }
           } else if (stats.isFile()) {
