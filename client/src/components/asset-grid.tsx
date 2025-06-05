@@ -1,6 +1,7 @@
 import { Grid, List } from "lucide-react";
 import AssetCard from "./asset-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Asset } from "@shared/schema";
 
 interface AssetGridProps {
@@ -12,23 +13,25 @@ interface AssetGridProps {
 export default function AssetGrid({ assets, viewMode, isLoading }: AssetGridProps) {
   if (isLoading) {
     return (
-      <div className={viewMode === "grid" 
-        ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-        : "space-y-4"
-      }>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className={viewMode === "grid" ? "" : "flex gap-4"}>
-            <Skeleton className={viewMode === "grid" ? "aspect-square w-full" : "w-24 h-24"} />
-            {viewMode === "list" && (
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/2" />
-                <Skeleton className="h-3 w-1/4" />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      <ScrollArea className="h-[calc(100vh-300px)]">
+        <div className={viewMode === "grid" 
+          ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4"
+          : "space-y-4 p-4"
+        }>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className={viewMode === "grid" ? "" : "flex gap-4"}>
+              <Skeleton className={viewMode === "grid" ? "aspect-square w-full" : "w-24 h-24"} />
+              {viewMode === "list" && (
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-3 w-1/4" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
     );
   }
 
@@ -47,17 +50,19 @@ export default function AssetGrid({ assets, viewMode, isLoading }: AssetGridProp
   }
 
   return (
-    <div className={viewMode === "grid" 
-      ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-      : "space-y-2"
-    }>
-      {assets.map((asset) => (
-        <AssetCard 
-          key={asset.id} 
-          asset={asset} 
-          viewMode={viewMode}
-        />
-      ))}
-    </div>
+    <ScrollArea className="h-[calc(100vh-300px)]">
+      <div className={viewMode === "grid" 
+        ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4"
+        : "space-y-2 p-4"
+      }>
+        {assets.map((asset) => (
+          <AssetCard 
+            key={asset.id} 
+            asset={asset} 
+            viewMode={viewMode}
+          />
+        ))}
+      </div>
+    </ScrollArea>
   );
 }

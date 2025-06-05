@@ -9,7 +9,7 @@ import { Plus, FolderOpen, Search, Grid, List } from "lucide-react";
 import AssetGrid from "@/components/asset-grid";
 import FolderTree from "@/components/folder-tree";
 import SearchFilters from "@/components/search-filters";
-import FolderSetupGuide from "@/components/folder-setup-guide";
+import LocalFolderBrowser from "@/components/local-folder-browser";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Asset } from "@shared/schema";
@@ -77,14 +77,7 @@ export default function Dashboard() {
               <p className="text-muted-foreground">Manage your 3D assets and VFX projects</p>
             </div>
             <div className="flex items-center gap-2">
-              <Button onClick={handleAddFolder} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Folder
-              </Button>
-              <Button variant="outline" size="sm">
-                <FolderOpen className="h-4 w-4 mr-2" />
-                Browse
-              </Button>
+              <LocalFolderBrowser onFolderScanned={() => {}} />
             </div>
           </div>
         </div>
@@ -123,9 +116,19 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-4">
-            {/* Folder Setup Guide - Show when no folders are being watched */}
-            {watchedFolders.length === 0 && (
-              <FolderSetupGuide onAddFolder={handleAddFolder} />
+            {/* Local Folder Browser - Show when no assets are loaded */}
+            {assets.length === 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Get Started</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Browse your local folders to scan for 3D assets
+                  </p>
+                  <LocalFolderBrowser onFolderScanned={() => {}} />
+                </CardContent>
+              </Card>
             )}
             
             <Card>

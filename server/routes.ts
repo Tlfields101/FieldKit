@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { fileWatcher } from "./file-watcher";
+import { fileScanner } from "./file-scanner";
 import { insertAssetSchema, updateAssetSchema, insertFolderSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs/promises";
@@ -88,6 +89,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/folders/scan", async (req, res) => {
+    try {
+      const { path: folderPath } = req.body;
+      if (!folderPath) {
+        return res.status(400).json({ message: "Folder path is required" });
+      }
+
+      // Scan folder for 3D assets
+      const assets = await fileScanner.scanFolder(folderPath);
+      
+      // Clear existing assets and add new ones
+      const existingAssets = await storage.getAssets();
+      for (const asset of existingAssets) {
+        await storage.deleteAsset(asset.id);
+      }
+      
+      // Add scanned assets to storage
+      for (const assetData of assets) {
+        await storage.createAsset(assetData);
+      }
+
+      res.json({ 
+        message: `Scanned folder and found ${assets.length} 3D assets`, 
+        path: folderPath,
+        assetCount: assets.length 
+      });
+    } catch (error) {
+      console.error('Folder scan error:', error);
+      res.status(500).json({ message: "Failed to scan folder" });
+    }
+  });
+
   app.post("/api/folders/watch", async (req, res) => {
     try {
       const { path: folderPath } = req.body;
@@ -95,13 +128,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Folder path is required" });
       }
 
-      // For desktop VFX workflows, we'll accept folder paths and attempt to watch them
-      // In a real desktop app, this would have proper file system access
       try {
         await fileWatcher.addWatchFolder(folderPath);
         res.json({ message: "Folder added to watch list", path: folderPath });
       } catch (error) {
-        // Still add to database for future scanning when folder becomes available
         await storage.createFolder({
           path: folderPath,
           name: path.basename(folderPath),
