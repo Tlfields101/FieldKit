@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [scannedAssets, setScannedAssets] = useState<Asset[]>([]);
   const { toast } = useToast();
 
   const { data: assets = [], isLoading: assetsLoading } = useQuery<Asset[]>({
@@ -40,11 +41,12 @@ export default function Dashboard() {
 
   const handleAddFolder = async () => {
     // Enhanced folder selection for VFX workflows
-    const folderPath = prompt("Enter folder path to watch (e.g., C:/Projects/3D_Assets or /home/user/Blender_Projects):");
+    const folderPath = prompt("Enter folder path to scan (e.g., C:/Projects/3D_Assets):");
     if (!folderPath) return;
 
     try {
-      await apiRequest("POST", "/api/folders/watch", { path: folderPath });
+      //Register the folder with the backend
+      await apiRequest("POST", "/api/folders/watch", {path: folderPath});
       toast({
         title: "Success",
         description: `Now monitoring: ${folderPath}`,
@@ -194,16 +196,16 @@ export default function Dashboard() {
                           <p className="text-xs text-muted-foreground">{selectedFolder}</p>
                         </div>
                       )}
-                      <AssetGrid 
-                        assets={filteredAssets} 
+                      <AssetGrid
+                        assets={filteredAssets}
                         viewMode={viewMode}
                         isLoading={assetsLoading}
                       />
                     </div>
                   </TabsContent>
                   <TabsContent value="recent" className="mt-4">
-                    <AssetGrid 
-                      assets={filteredAssets.slice(0, 10)} 
+                    <AssetGrid
+                      assets={filteredAssets.slice(0, 10)}
                       viewMode={viewMode}
                       isLoading={assetsLoading}
                     />
