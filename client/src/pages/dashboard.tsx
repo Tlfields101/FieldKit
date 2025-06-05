@@ -47,31 +47,15 @@ export default function Dashboard() {
     try {
       //Register the folder with the backend
       await apiRequest("POST", "/api/folders/watch", {path: folderPath});
-
-      // Immediatley scan it and get asssets from it
-      const res = await fetch ("/api/assets-from-path", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({folder: folderPath}),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to scan folder");
-      }
-
-      const data = await res.json();
-      setScannedAssets(data.assets);
-
       toast({
         title: "Success",
-        description: `Now monitoring: ${folderPath} — Found ${data.assets.length} assets`,
+        description: `Now monitoring: ${folderPath}`,
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
-        title: "Error",
-        description: error.message || "Could not add or scan folder",
-        variant: "destructive",
+        title: "Note",
+        description: "Folder path added - it will be scanned when accessible",
+        variant: "default",
       });
     }
   };
@@ -214,17 +198,14 @@ export default function Dashboard() {
                         viewMode={viewMode}
                         isLoading={assetsLoading}
                       />
-                      {scannedAssets.length > 0 && (
-                          <div className="mt-8">
-                            <p className="text-sm font-semibold mb-2">Scanned Assets:</p>
-                            <AssetGrid
-                              assets={filteredAssets.slice(0, 10)}
-                              viewMode={viewMode}
-                              isLoading={assetsLoading}
-                            />
-                          </div>
-                        )}
                     </div>
+                  </TabsContent>
+                  <TabsContent value="recent" className="mt-4">
+                    <AssetGrid
+                      assets={filteredAssets.slice(0, 10)}
+                      viewMode={viewMode}
+                      isLoading={assetsLoading}
+                    />
                   </TabsContent>
                   <TabsContent value="favorites" className="mt-4">
                     <div className="text-center text-muted-foreground py-8">
