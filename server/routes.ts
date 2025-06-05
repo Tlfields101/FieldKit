@@ -5,6 +5,7 @@ import { fileWatcher } from "./file-watcher";
 import { fileScanner } from "./file-scanner";
 import { insertAssetSchema, updateAssetSchema, insertFolderSchema } from "@shared/schema";
 import path from "path";
+import fsStandard from "fs";
 import fs from "fs/promises";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -52,6 +53,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/assets/:id/stream", async (req, res) => {
+    try{
+      const id = parseInt(req.params.id);
+      const asset = await storage.getAsset(id);
+      if (!asset) {
+        return res.status(404).json({ message: "Asset not found" });
+      }
+
+      const filePath = asset.filepath;
+      const stat = await fs.stat(filePath);
+
+      res.setHeader('Content-Length', stat.size);
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename=${asset.filename}`);
+
+      const fileStream = fsStandard.createReadStream(filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch assets" });
+    }
+  });
+
   app.put("/api/assets/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -89,6 +112,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/folders/subfolders/:path", async (req, res) => {
+    try {
+      const parentPath = decodeURIComponent(req.params.path);
+      const subfolders = await storage.getSubfolders(parentPath);
+      res.json(subfolders);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch subfolders" });
+    }
+  });
+
   app.post("/api/folders/scan", async (req, res) => {
     try {
       const { path: folderPath } = req.body;
@@ -108,6 +141,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add scanned assets to storage
       for (const assetData of assets) {
         await storage.createAsset(assetData);
+      }
+
+      // Mark the folder and all its subfolders as watched
+      const allFolders = await storage.getFolders();
+      const toWatch = allFolders.filter(f => f.path === folderPath || f.path.startsWith(folderPath + path.sep));
+      for (const folder of toWatch) {
+        await storage.updateFolder(folder.id, { isWatched: true });
       }
 
       res.json({ 
