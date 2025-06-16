@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Folder } from "@shared/schema";
 
 interface FolderTreeProps {
@@ -10,76 +10,148 @@ interface FolderTreeProps {
   onFolderSelect: (path: string | null) => void;
 }
 
+// 📁 Hook to fetch subfolders
 function useSubfolders(parentPath: string | null) {
   return useQuery<Folder[]>({
-    queryKey: ["/api/folders/subfolders", encodeURIComponent(parentPath || "")],
+    queryKey: ["/api/folders/subfolders", parentPath],
+    queryFn: async () => {
+      if (!parentPath) return [];
+      const encoded = encodeURIComponent(parentPath);
+      const res = await fetch(`/api/folders/subfolders/${encoded}`);
+      if (!res.ok) throw new Error("Failed to fetch subfolders");
+      return res.json();
+    },
     enabled: !!parentPath,
   });
 }
 
-export default function FolderTree({ selectedFolder, onFolderSelect }: FolderTreeProps) {
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+// 📁 Recursive folder item
+function FolderItem({
+  folder,
+  level,
+  expandedFolders,
+  setExpandedFolders,
+  selectedFolder,
+  onFolderSelect,
+}: {
+  folder: Folder;
+  level: number;
+  expandedFolders: Set<string>;
+  setExpandedFolders: React.Dispatch<React.SetStateAction<Set<string>>>;
+  selectedFolder: string | null;
+  onFolderSelect: (path: string | null) => void;
+}) {
+  const queryClient = useQueryClient();
+  const isExpanded = expandedFolders.has(folder.path);
+  const isSelected = selectedFolder === folder.path;
 
-  // Get watched folders as roots
-  const { data: watchedFolders = [] } = useQuery<string[]>({
-    queryKey: ["/api/folders/watched"],
-  });
+  const { data: subfolders = [], isLoading } = useSubfolders(isExpanded ? folder.path : null);
+  const [hasSubfolders, setHasSubfolders] = useState<boolean | null>(null);
 
-  // Get folder objects for watched roots
-  const { data: allFolders = [] } = useQuery<Folder[]>({
-    queryKey: ["/api/folders"],
-  });
-  const watchedFolderObjs = allFolders.filter(f => watchedFolders.includes(f.path));
+  // Check for subfolders when the folder is first rendered
+  useEffect(() => {
+    if (!isExpanded) {
+      fetch(`/api/folders/subfolders/${encodeURIComponent(folder.path)}`)
+        .then(res => res.json())
+        .then(folders => setHasSubfolders(folders.length > 0))
+        .catch(() => setHasSubfolders(false));
+    }
+  }, [folder.path, isExpanded]);
 
-  // Helper to recursively render folder and its subfolders
-  const renderFolder = (folder: Folder, level = 0) => {
-    const isExpanded = expandedFolders.has(folder.path);
-    const isSelected = selectedFolder === folder.path;
-    const hasChildren = true; // Assume folders can have children, fetch on expand
+  const toggleExpand = () => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      const isNowExpanded = !prev.has(folder.path);
+      if (isNowExpanded) {
+        next.add(folder.path);
+        queryClient.invalidateQueries({
+          queryKey: ["/api/folders/subfolders", folder.path],
+        });
+      } else {
+        next.delete(folder.path);
+      }
+      return next;
+    });
+  };
 
-    // Fetch subfolders only if expanded
-    const { data: subfolders = [] } = useSubfolders(isExpanded ? folder.path : "");
-
-    return (
-      <div key={folder.path}>
-        <div
-          className={`flex items-center gap-1 py-1 px-2 hover:bg-muted/50 cursor-pointer min-w-0 ${
-            isSelected ? 'bg-muted' : ''
-          }`}
-          style={{ paddingLeft: `${level * 12 + 8}px` }}
-          onClick={() => onFolderSelect(isSelected ? null : folder.path)}
-        >
+  return (
+    <div>
+      <div
+        className={`flex items-center gap-1 py-1 px-2 hover:bg-muted/50 cursor-pointer min-w-0 ${
+          isSelected ? "bg-muted" : ""
+        }`}
+        style={{ paddingLeft: `${level * 12 + 8}px` }}
+        onClick={() => onFolderSelect(isSelected ? null : folder.path)}
+      >
+        {hasSubfolders && (
           <Button
             variant="ghost"
             size="sm"
             className="h-4 w-4 p-0 hover:bg-transparent"
             onClick={e => {
               e.stopPropagation();
-              const newExpanded = new Set(expandedFolders);
-              if (isExpanded) newExpanded.delete(folder.path);
-              else newExpanded.add(folder.path);
-              setExpandedFolders(newExpanded);
+              toggleExpand();
             }}
           >
             {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </Button>
-          {isSelected ? (
-            <FolderOpen className="h-4 w-4 text-primary" />
-          ) : (
-            <FolderIcon className="h-4 w-4 text-primary" />
-          )}
-          <span className={`text-sm truncate flex-1 ${isSelected ? 'font-medium' : ''}`} title={folder.name}>
-            {folder.name}
-          </span>
-        </div>
-        {isExpanded && subfolders.length > 0 && (
-          <div>
-            {subfolders.map(child => renderFolder(child, level + 1))}
-          </div>
         )}
+        {!hasSubfolders && <div className="w-4" />}
+        {isSelected ? (
+          <FolderOpen className="h-4 w-4 text-primary" />
+        ) : (
+          <FolderIcon className="h-4 w-4 text-primary" />
+        )}
+        <span className={`text-sm truncate flex-1 ${isSelected ? "font-medium" : ""}`} title={folder.name}>
+          {folder.name}
+        </span>
       </div>
-    );
-  };
+      {isExpanded && (
+        <div className="pl-2">
+          {isLoading ? (
+            <div className="text-xs text-muted">Loading...</div>
+          ) : subfolders.length === 0 ? (
+            <div className="text-xs text-muted">No subfolders</div>
+          ) : (
+            subfolders.map(sub => (
+              <FolderItem
+                key={sub.path}
+                folder={sub}
+                level={level + 1}
+                expandedFolders={expandedFolders}
+                setExpandedFolders={setExpandedFolders}
+                selectedFolder={selectedFolder}
+                onFolderSelect={onFolderSelect}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 📂 Main folder tree component
+export default function FolderTree({ selectedFolder, onFolderSelect }: FolderTreeProps) {
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+
+  const { data: watchedFolders = [] } = useQuery<string[]>({
+    queryKey: ["/api/folders/watched"],
+    queryFn: async () => {
+      const res = await fetch("/api/folders/watched");
+      return res.json();
+    },
+  });
+
+  const { data: allFolders = [] } = useQuery<Folder[]>({
+    queryKey: ["/api/folders"],
+    queryFn: async () => {
+      const res = await fetch("/api/folders");
+      return res.json();
+    },
+  });
+
+  const watchedFolderObjs = allFolders.filter(f => watchedFolders.includes(f.path));
 
   return (
     <ScrollArea className="h-[400px]">
@@ -99,7 +171,17 @@ export default function FolderTree({ selectedFolder, onFolderSelect }: FolderTre
             <p className="text-xs">Add folders to start monitoring</p>
           </div>
         ) : (
-          watchedFolderObjs.map(folder => renderFolder(folder))
+          watchedFolderObjs.map(folder => (
+            <FolderItem
+              key={folder.path}
+              folder={folder}
+              level={0}
+              expandedFolders={expandedFolders}
+              setExpandedFolders={setExpandedFolders}
+              selectedFolder={selectedFolder}
+              onFolderSelect={onFolderSelect}
+            />
+          ))
         )}
       </div>
     </ScrollArea>

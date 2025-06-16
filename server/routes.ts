@@ -116,7 +116,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const parentPath = decodeURIComponent(req.params.path);
       const subfolders = await storage.getSubfolders(parentPath);
-      res.json(subfolders);
+
+      // Filter to only get direct children
+      const directChildren = subfolders.filter(folder => {
+        const relativePath = folder.path.slice(parentPath.length + 1);
+        return !relativePath.includes(path.sep);
+      });
+
+      res.json(directChildren);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch subfolders" });
     }
@@ -150,10 +157,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateFolder(folder.id, { isWatched: true });
       }
 
+      //Update all folders to be watched
+      for (const folder of toWatch) {
+        await storage.updateFolder(folder.id, { isWatched: true, lastScanned: new Date() });
+      }
+
+      //Add the folder to the file watcher
+      await fileWatcher.addWatchFolder(folderPath);
+
       res.json({ 
         message: `Scanned folder and found ${assets.length} 3D assets`, 
         path: folderPath,
-        assetCount: assets.length 
+        assetCount: assets.length,
+        folderCount: toWatch.length
       });
     } catch (error) {
       console.error('Folder scan error:', error);

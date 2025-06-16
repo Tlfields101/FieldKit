@@ -58,7 +58,7 @@ export class FileScanner {
                   path: fullPath,
                   name: item,
                   parentId: parentFolder?.id || null,
-                  isWatched: false,
+                  isWatched: true,
                   lastScanned: new Date(),
                 });
               }

@@ -36,6 +36,8 @@ export default function LocalFolderBrowser({ onFolderScanned }: LocalFolderBrows
         description: `Found ${data.assetCount} 3D assets in the selected folder`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/assets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/folders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/folders/watched"] });
       setIsOpen(false);
       setFolderPath("");
       onFolderScanned();
